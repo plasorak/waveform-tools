@@ -19,6 +19,20 @@ using namespace std::chrono;
 
 namespace po = boost::program_options;
 
+// Write `nevents` events of data from `filename` to text files. The
+// raw waveforms are written to `outfile`, while the true energy
+// depositions are written to `truth_outfile` (unless it is an empty
+// string, in which case no truth file is produced). If `onlySignal`
+// is true, then only channels with some true energy deposition are
+// written out; otherwise all channels are written out.
+// 
+// Each line in `outfile` has the format:
+//
+// event_no channel_no sample_0 sample_1 ... sample_N
+//
+// Each line in `truth_outfile` has the format
+//
+// event_no channel_no tdc total_charge
 void
 extract_larsoft_waveforms(std::string const& filename,
                           std::string const& outfile,
@@ -45,20 +59,19 @@ extract_larsoft_waveforms(std::string const& filename,
       channelsWithSignal.insert(simch.Channel());
       if(fout_truth){
           double charge=0;
-          (*fout_truth) << iev << " " << simch.Channel() << " ";
           for (const auto& TDCinfo: simch.TDCIDEMap()) {
               for (const sim::IDE& ide: TDCinfo.second) {
                   charge += ide.numElectrons;
               } // for IDEs
+              (*fout_truth) << iev << " " << simch.Channel() << " ";
               auto const tdc = TDCinfo.first;
-              (*fout_truth) << tdc << " " << charge << " ";
+              (*fout_truth) << tdc << " " << charge << std::endl;
           } // for TDCs
-          (*fout_truth) << std::endl;
-      }
+      } // if fout_truth
     } // loop over SimChannels
 
     //------------------------------------------------------------------
-    // Look at the digits
+    // Look at the digits (ie, TPC waveforms)
     auto& digits =
       *ev.getValidHandle<vector<raw::RawDigit>>(daq_tag);
     for(auto&& digit: digits){
