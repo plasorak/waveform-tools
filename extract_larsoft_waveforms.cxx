@@ -13,11 +13,28 @@
 #include "lardataobj/Simulation/SimChannel.h"
 #include "lardataobj/RawData/RawDigit.h"
 
+#include "cnpy.h"
+
 using namespace art;
 using namespace std;
 using namespace std::chrono;
 
 namespace po = boost::program_options;
+
+template<class T>
+void save_to_file(std::string const& outfile,
+                  std::vector<std::vector<T> > v,
+                  bool append)
+{
+    // Open in append mode because we 
+    std::ofstream fout(outfile, append ? ios::app : ios_base::out);
+    for(auto const& v1 : v){
+        for(auto const& s : v1){
+            fout << s << " ";
+        }
+        fout << std::endl;
+    }
+}
 
 // Write `nevents` events of data from `filename` to text files. The
 // raw waveforms are written to `outfile`, while the true energy
@@ -43,11 +60,11 @@ extract_larsoft_waveforms(std::string const& filename,
   // Create a vector of length 1, containing the given filename.
   vector<string> filenames(1, filename);
 
-  std::ofstream fout(outfile);
-  std::ofstream* fout_truth(truth_outfile!="" ? new std::ofstream(truth_outfile) : nullptr);
-
   int iev=0;
   for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
+    vector<vector<int> > samples;
+    vector<vector<float> > trueIDEs;
+
     std::set<int> channelsWithSignal;
     if(iev>=nevents) break;
     std::cout << "Event " << iev << std::endl;
@@ -57,15 +74,14 @@ extract_larsoft_waveforms(std::string const& filename,
 
     for(auto&& simch: simchs){
       channelsWithSignal.insert(simch.Channel());
-      if(fout_truth){
+      if(truth_outfile!=""){
           double charge=0;
           for (const auto& TDCinfo: simch.TDCIDEMap()) {
               for (const sim::IDE& ide: TDCinfo.second) {
                   charge += ide.numElectrons;
               } // for IDEs
-              (*fout_truth) << iev << " " << simch.Channel() << " ";
               auto const tdc = TDCinfo.first;
-              (*fout_truth) << tdc << " " << charge << std::endl;
+              trueIDEs.push_back(std::vector<float>{(float)iev, (float)simch.Channel(), (float)tdc, (float)charge});
           } // for TDCs
       } // if fout_truth
     } // loop over SimChannels
@@ -81,12 +97,13 @@ extract_larsoft_waveforms(std::string const& filename,
       if(onlySignal && channelsWithSignal.find(digit.Channel())==channelsWithSignal.end()){
         continue;
       }
-      fout << iev << " " << digit.Channel() <<  " ";
+      samples.push_back({(int)iev, (int)digit.Channel()});
       for(auto&& sample: digit.ADCs()){
-        fout << sample << " ";
+          samples.back().push_back(sample);
       }
-      fout << std::endl;
     } // end loop over digits (=?channels)
+    save_to_file<int>(outfile, samples, iev==0);
+    if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, iev==0);
     ++iev;
   } // end loop over events
 }
