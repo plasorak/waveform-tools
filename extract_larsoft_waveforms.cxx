@@ -20,7 +20,9 @@ using namespace std::chrono;
 namespace po = boost::program_options;
 
 void
-extract_larsoft_waveforms(std::string const& filename, std::string const& outfile,
+extract_larsoft_waveforms(std::string const& filename,
+                          std::string const& outfile,
+                          std::string const& truth_outfile,
                           int nevents, bool onlySignal)
 {
   InputTag daq_tag{ "daq" };
@@ -28,7 +30,7 @@ extract_larsoft_waveforms(std::string const& filename, std::string const& outfil
   vector<string> filenames(1, filename);
 
   std::ofstream fout(outfile);
-  std::ofstream fout_truth(outfile+"-truth");
+  std::ofstream* fout_truth(truth_outfile!="" ? new std::ofstream(truth_outfile) : nullptr);
 
   int iev=0;
   for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
@@ -41,16 +43,18 @@ extract_larsoft_waveforms(std::string const& filename, std::string const& outfil
 
     for(auto&& simch: simchs){
       channelsWithSignal.insert(simch.Channel());
-      double charge=0;
-      fout_truth << iev << " " << simch.Channel() << " ";
-      for (const auto& TDCinfo: simch.TDCIDEMap()) {
-        for (const sim::IDE& ide: TDCinfo.second) {
-          charge += ide.numElectrons;
-        } // for IDEs
-        auto const tdc = TDCinfo.first;
-        fout_truth << tdc << " " << charge << " ";
-      } // for TDCs
-      fout_truth << std::endl;
+      if(fout_truth){
+          double charge=0;
+          (*fout_truth) << iev << " " << simch.Channel() << " ";
+          for (const auto& TDCinfo: simch.TDCIDEMap()) {
+              for (const sim::IDE& ide: TDCinfo.second) {
+                  charge += ide.numElectrons;
+              } // for IDEs
+              auto const tdc = TDCinfo.first;
+              (*fout_truth) << tdc << " " << charge << " ";
+          } // for TDCs
+          (*fout_truth) << std::endl;
+      }
     } // loop over SimChannels
 
     //------------------------------------------------------------------
@@ -81,6 +85,7 @@ int main(int argc, char** argv)
         ("help,h", "produce help message")
         ("input,i", po::value<string>(), "input file name")
         ("output,o", po::value<string>(), "output file name")
+        ("truth,t", po::value<string>()->default_value(""), "truth output file name")
         ("nevent,n", po::value<int>()->default_value(1), "number of events")
         ("onlysignal", "only output channels with true signal")
         ;
@@ -108,6 +113,7 @@ int main(int argc, char** argv)
 
     extract_larsoft_waveforms(vm["input"].as<string>(),
                               vm["output"].as<string>(),
+                              vm["truth"].as<string>(),
                               vm["nevent"].as<int>(),
                               vm.count("onlysignal"));
     return 0;
