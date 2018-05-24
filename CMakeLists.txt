@@ -12,6 +12,9 @@ include_directories($ENV{LARDATAOBJ_INC})
 include_directories($ENV{NUSIMDATA_INC})
 include_directories($ENV{ROOT_INC})
 link_directories($ENV{ROOTSYS}/lib $ENV{CANVAS_LIB} $ENV{CETLIB_EXCEPT_LIB} $ENV{CETLIB_LIB} $ENV{GALLERY_LIB} $ENV{NUSIMDATA_LIB} $ENV{LARCOREOBJ_LIB} $ENV{LARDATAOBJ_LIB} $ENV{BOOST_LIB})
+
 add_executable(extract_larsoft_waveforms extract_larsoft_waveforms.cxx cnpy.cpp)
 set_property(TARGET extract_larsoft_waveforms PROPERTY CXX_STANDARD 14)
 target_link_libraries(extract_larsoft_waveforms Core RIO Net Hist Graf Graf3d Gpad Tree Rint Postscript Matrix Physics MathCore Thread MultiProc pthread canvas cetlib_except cetlib gallery nusimdata_SimulationBase larcoreobj_SummaryData lardataobj_RecoBase boost_program_options)
+
+add_subdirectory(test)
