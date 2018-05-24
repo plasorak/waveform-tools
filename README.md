@@ -21,3 +21,7 @@ Output is to text file or numpy format (using
 [https://github.com/rogersce/cnpy](cnpy)). See
 `extract_larsoft_waveforms --help` for options, and see the source for
 a description of the output format.
+
+### `read_samples.h`
+
+Contains functions to read the output from `extract_larsoft_waveforms.cxx` (in text or numpy format) back into C++
