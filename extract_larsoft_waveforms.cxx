@@ -21,18 +21,44 @@ using namespace std::chrono;
 
 namespace po = boost::program_options;
 
+enum class Format { Text, Numpy };
+
 template<class T>
 void save_to_file(std::string const& outfile,
                   std::vector<std::vector<T> > v,
+                  Format format,
                   bool append)
 {
-    // Open in append mode because we 
-    std::ofstream fout(outfile, append ? ios::app : ios_base::out);
-    for(auto const& v1 : v){
-        for(auto const& s : v1){
-            fout << s << " ";
+    switch(format){
+
+    case Format::Text:
+    {
+        // Open in append mode because we 
+        std::ofstream fout(outfile, append ? ios::app : ios_base::out);
+        for(auto const& v1 : v){
+            for(auto const& s : v1){
+                fout << s << " ";
+            }
+            fout << std::endl;
         }
-        fout << std::endl;
+    }
+    break;
+    
+    case Format::Numpy:
+    {
+        // Do nothing if the vector is empty
+        if(v.empty() || v[0].empty()) break;
+        // cnpy needs a single contiguous array of data, so do that conversion
+        std::vector<T> tmp;
+        tmp.reserve(v.size()*v[0].size());
+        for(auto const& v1 : v){
+            for(auto const& s : v1){
+                tmp.push_back(s);
+            }
+        }
+        cnpy::npy_save(outfile, &tmp[0], {v.size(), v[0].size()}, append ? "a" : "w");
+    }
+    break;
     }
 }
 
@@ -54,6 +80,7 @@ void
 extract_larsoft_waveforms(std::string const& filename,
                           std::string const& outfile,
                           std::string const& truth_outfile,
+                          Format format,
                           int nevents, bool onlySignal)
 {
   InputTag daq_tag{ "daq" };
@@ -102,8 +129,8 @@ extract_larsoft_waveforms(std::string const& filename,
           samples.back().push_back(sample);
       }
     } // end loop over digits (=?channels)
-    save_to_file<int>(outfile, samples, iev==0);
-    if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, iev==0);
+    save_to_file<int>(outfile, samples, format, iev!=0);
+    if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, format, iev!=0);
     ++iev;
   } // end loop over events
 }
@@ -117,6 +144,7 @@ int main(int argc, char** argv)
         ("output,o", po::value<string>(), "output file name")
         ("truth,t", po::value<string>()->default_value(""), "truth output file name")
         ("nevent,n", po::value<int>()->default_value(1), "number of events")
+        ("numpy", "use numpy output format instead of text")
         ("onlysignal", "only output channels with true signal")
         ;
 
@@ -144,6 +172,7 @@ int main(int argc, char** argv)
     extract_larsoft_waveforms(vm["input"].as<string>(),
                               vm["output"].as<string>(),
                               vm["truth"].as<string>(),
+                              vm.count("numpy") ? Format::Numpy : Format::Text,
                               vm["nevent"].as<int>(),
                               vm.count("onlysignal"));
     return 0;
