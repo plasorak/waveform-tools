@@ -14,7 +14,8 @@ The software is built using `cmake`, so eg:
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
-make```
+make
+```
 
 Output is to text file or numpy format (using
 [https://github.com/rogersce/cnpy](cnpy)). See
