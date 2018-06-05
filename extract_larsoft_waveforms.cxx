@@ -77,13 +77,14 @@ void save_to_file(std::string const& outfile,
 //
 // event_no channel_no tdc total_charge
 void
-extract_larsoft_waveforms(std::string const& filename,
+extract_larsoft_waveforms(std::string const& tag,
+                          std::string const& filename,
                           std::string const& outfile,
                           std::string const& truth_outfile,
                           Format format,
                           int nevents, bool onlySignal)
 {
-  InputTag daq_tag{ "daq" };
+  InputTag daq_tag{ tag };
   // Create a vector of length 1, containing the given filename.
   vector<string> filenames(1, filename);
 
@@ -143,6 +144,7 @@ int main(int argc, char** argv)
         ("input,i", po::value<string>(), "input file name")
         ("output,o", po::value<string>(), "output file name")
         ("truth,t", po::value<string>()->default_value(""), "truth output file name")
+        ("tag,g", po::value<string>()->default_value("daq"), "input tag (aka \"module label\") of input digits")
         ("nevent,n", po::value<int>()->default_value(1), "number of events")
         ("numpy", "use numpy output format instead of text")
         ("onlysignal", "only output channels with true signal")
@@ -169,7 +171,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    extract_larsoft_waveforms(vm["input"].as<string>(),
+    extract_larsoft_waveforms(vm["tag"].as<string>(),
+                              vm["input"].as<string>(),
                               vm["output"].as<string>(),
                               vm["truth"].as<string>(),
                               vm.count("numpy") ? Format::Numpy : Format::Text,
