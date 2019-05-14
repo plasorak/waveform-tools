@@ -22,6 +22,10 @@ Output is to text file or numpy format (using
 `extract_larsoft_waveforms --help` for options, and see the source for
 a description of the output format.
 
+### `extract_larsoft_hits.cxx`
+
+Extracts hits from a larsoft file into a flat text file, much like `extract_larsoft_waveforms` does for raw data
+
 ### `read_samples.h`
 
 Contains functions to read the output from `extract_larsoft_waveforms.cxx` (in text or numpy format) back into C++
