@@ -13,6 +13,7 @@
 
 #include "lardataobj/Simulation/SimChannel.h"
 #include "lardataobj/RawData/RawDigit.h"
+#include "lardataobj/RawData/RDTimeStamp.h"
 
 #include "cnpy.h"
 
@@ -23,6 +24,7 @@ using namespace std::chrono;
 namespace po = boost::program_options;
 
 enum class Format { Text, Numpy };
+
 
 template<class T>
 void save_to_file(std::string const& outfile,
@@ -83,7 +85,8 @@ extract_larsoft_waveforms(std::string const& tag,
                           std::string const& outfile,
                           std::string const& truth_outfile,
                           Format format,
-                          int nevents, int nskip, bool onlySignal)
+                          int nevents, int nskip, bool onlySignal,
+                          int triggerType)
 {
   InputTag daq_tag{ tag };
   // Create a vector of length 1, containing the given filename.
@@ -97,6 +100,17 @@ extract_larsoft_waveforms(std::string const& tag,
     std::set<int> channelsWithSignal;
     if(iev<nskip) continue;
     if(iev>=nevents+nskip) break;
+    if(triggerType!=-1){
+        auto& timestamp=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timingrawdecoder:daq:DecoderandReco"});
+        assert(timestamp.size()==1);
+        if(timestamp[0].GetFlags()!=triggerType){
+            std::cout << "Skipping event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+            continue;
+        }
+        else{
+            std::cout << "Using event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+        }
+    }
     std::cout << "Event " << ev.eventAuxiliary().id() << std::endl;
     if(truth_outfile!=""){
         //------------------------------------------------------------------
@@ -181,6 +195,7 @@ int main(int argc, char** argv)
         ("nskip,k", po::value<int>()->default_value(0), "number of events to skip")
         ("numpy", "use numpy output format instead of text")
         ("onlysignal", "only output channels with true signal")
+        ("trig", po::value<int>()->default_value(-1), "select events with given trigger type")
         ;
 
     po::variables_map vm;
@@ -211,6 +226,7 @@ int main(int argc, char** argv)
                               vm.count("numpy") ? Format::Numpy : Format::Text,
                               vm["nevent"].as<int>(),
                               vm["nskip"].as<int>(),
-                              vm.count("onlysignal"));
+                              vm.count("onlysignal"),
+                              vm["trig"].as<int>());
     return 0;
 }
