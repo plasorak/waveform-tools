@@ -5,8 +5,7 @@
 ### `extract_larsoft_waveforms.cxx`
 
 Extracts waveforms from a non-zero-suppressed DUNE MC file using
-[http://art.fnal.gov/gallery](gallery). If you're on a Fermilab
-machine, `source setup.sh` should set up everything you'll need.
+[http://art.fnal.gov/gallery](gallery). If you're on a machine with CVMFS mountes (eg Fermilab GPVM or lxplus), `source setup.sh` should set up everything you'll need.
 
 The software is built using `cmake`, so eg:
 
