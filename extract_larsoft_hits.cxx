@@ -144,6 +144,9 @@ extract_larsoft_waveforms(std::string const& tag,
     } // end loop over digits (=?channels)
     std::string this_outfile(outfile);
     size_t dotpos=outfile.find_last_of(".");
+    if(dotpos==std::string::npos){
+      dotpos=outfile.length();
+    }
     std::ostringstream iss;
     iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << outfile.substr(dotpos, outfile.length()-dotpos);
     std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
@@ -158,7 +161,7 @@ int main(int argc, char** argv)
     desc.add_options()
         ("help,h", "produce help message")
         ("input,i", po::value<string>(), "input file name")
-        ("output,o", po::value<string>(), "output file name")
+        ("output,o", po::value<string>(), "base output file name. Individual output files will be created for each event, with \"_evtN\" inserted before the extension, or at the end if there is no extension")
         ("tag,g", po::value<string>()->default_value("daq"), "input tag (aka \"module label\") of input digits")
         ("nevent,n", po::value<int>()->default_value(1), "number of events to save")
         ("nskip,k", po::value<int>()->default_value(0), "number of events to skip")
