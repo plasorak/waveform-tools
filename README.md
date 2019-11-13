@@ -28,3 +28,7 @@ Extracts hits from a larsoft file into a flat text file, much like `extract_lars
 ### `read_samples.h`
 
 Contains functions to read the output from `extract_larsoft_waveforms.cxx` (in text or numpy format) back into C++
+
+### `python/protodune/self-trigger-evt-disp.py`
+
+A simple python raw data event display that uses numpy files as created by `extract_larsoft_waveforms`
