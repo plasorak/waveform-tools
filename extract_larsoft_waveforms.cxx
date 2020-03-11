@@ -86,7 +86,8 @@ extract_larsoft_waveforms(std::string const& tag,
                           std::string const& truth_outfile,
                           Format format,
                           int nevents, int nskip, bool onlySignal,
-                          int triggerType)
+                          int triggerType,
+                          bool timestampInFilename)
 {
   InputTag daq_tag{ tag };
   // Create a vector of length 1, containing the given filename.
@@ -176,8 +177,14 @@ extract_larsoft_waveforms(std::string const& tag,
     if(dotpos==std::string::npos){
       dotpos=outfile.length();
     }
-    std::ostringstream iss;
-    iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << outfile.substr(dotpos, outfile.length()-dotpos);
+    std::ostringstream iss, timestampStr;
+    if(timestampInFilename){
+      auto& rdtimestamps=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timing:daq:RunRawDecoder"});
+      assert(rdtimestamps.size()==1);
+      // std::cout << "eventAuxiliary value is " << ev.eventAuxiliary().time().value() << std::endl;
+      timestampStr << "_t0x" << std::hex << rdtimestamps[0].GetTimeStamp();
+    }
+    iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << timestampStr.str() <<  outfile.substr(dotpos, outfile.length()-dotpos);
     std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
     save_to_file<int>(iss.str(), samples, format, false);
     if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, format, iev!=0);
@@ -199,6 +206,7 @@ int main(int argc, char** argv)
         ("numpy", "use numpy output format instead of text")
         ("onlysignal", "only output channels with true signal")
         ("trig", po::value<int>()->default_value(-1), "select events with given trigger type")
+        ("ts", "add event timestamp to filename")
         ;
 
     po::variables_map vm;
@@ -230,6 +238,7 @@ int main(int argc, char** argv)
                               vm["nevent"].as<int>(),
                               vm["nskip"].as<int>(),
                               vm.count("onlysignal"),
-                              vm["trig"].as<int>());
+                              vm["trig"].as<int>(),
+                              vm.count("ts"));
     return 0;
 }
