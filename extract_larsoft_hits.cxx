@@ -82,12 +82,12 @@ void save_to_file(std::string const& outfile,
 //
 // event_no channel_no tdc total_charge
 void
-extract_larsoft_waveforms(std::string const& tag,
-                          std::string const& filename,
-                          std::string const& outfile,
-                          Format format,
-                          int nevents, int nskip,
-                          int triggerType)
+extract_larsoft_hits(std::string const& tag,
+                     std::string const& filename,
+                     std::string const& outfile,
+                     Format format,
+                     int nevents, int nskip,
+                     int triggerType)
 {
   InputTag daq_tag{ tag };
   // Create a vector of length 1, containing the given filename.
@@ -120,24 +120,6 @@ extract_larsoft_waveforms(std::string const& tag,
         std::cout << "Hits vector is empty" << std::endl;
     }
     for(auto&& hit: hits){
-                    // recob::HitCreator lar_hit(*digitMap[offlineChannel],       //RAW DIGIT REFERENCE.
-                    //                           wid,                             //WIRE ID.
-                    //                           startTick,                       //START TICK.
-                    //                           endTick,                         //END TICK. 
-                    //                           hit.timeOverThreshold,           //RMS.
-                    //                           startTick,                       //PEAK_TIME.
-                    //                           0,                               //SIGMA_PEAK_TIME.
-                    //                           0,                               //PEAK_AMPLITUDE.
-                    //                           0,                               //SIGMA_PEAK_AMPLITUDE.
-                    //                           hit.charge,                      //HIT_INTEGRAL.
-                    //                           0,                               //HIT_SIGMA_INTEGRAL.
-                    //                           hit.charge,                      //SUMMED CHARGE. 
-                    //                           0,                               //MULTIPLICITY.
-                    //                           0,                               //LOCAL_INDEX.
-                    //                           0,                               //WIRE ID.
-                    //                           0                                //DEGREES OF FREEDOM.
-                    //     );
-
         samples.push_back({
                 (int)hit.Channel(), hit.StartTick(), hit.EndTick(), (int)hit.SummedADC(), (int)hit.RMS()
             });
