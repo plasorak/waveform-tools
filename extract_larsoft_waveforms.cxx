@@ -13,6 +13,7 @@
 
 #include "lardataobj/Simulation/SimChannel.h"
 #include "lardataobj/RawData/RawDigit.h"
+#include "lardataobj/RawData/raw.h"
 #include "lardataobj/RawData/RDTimeStamp.h"
 
 #include "cnpy.h"
@@ -143,19 +144,17 @@ extract_larsoft_waveforms(std::string const& tag,
             std::cout << "Digits vector is empty" << std::endl;
         }
         for(auto&& digit: digits){
-            if(digit.Compression()!=0){
-                std::cout << "Compression type " << digit.Compression() << std::endl;
-                exit(1);
-            }
+
             if(onlySignal && channelsWithSignal.find(digit.Channel())==channelsWithSignal.end()){
                 continue;
             }
+
             // Check that the waveform has the same number of samples as all the previous waveforms
-            if(waveform_nsamples<0){ waveform_nsamples=digit.NADC(); }
+            if(waveform_nsamples<0){ waveform_nsamples=digit.Samples(); }
             else{
-                if(digit.NADC()!=waveform_nsamples){
+                if(digit.Samples()!=waveform_nsamples){
                     if(n_truncated<10){
-                        std::cerr << "Channel " << digit.Channel() << " (offline APA " << (digit.Channel()/2560) << ") has " << digit.NADC() << " samples but all previous channels had " << waveform_nsamples << " samples" << std::endl;
+                        std::cerr << "Channel " << digit.Channel() << " (offline APA " << (digit.Channel()/2560) << ") has " << digit.Samples() << " samples but all previous channels had " << waveform_nsamples << " samples" << std::endl;
                     }
                     if(n_truncated==100){
                         std::cerr << "(More errors suppressed)" << std::endl;
@@ -163,9 +162,13 @@ extract_larsoft_waveforms(std::string const& tag,
                     ++n_truncated;
                 }
             }
+
+            std::vector<short> uncompressed(digit.Samples(), 0);
+            raw::Uncompress(digit.ADCs(), uncompressed, digit.Compression());
+
             samples.push_back({(int)ev.eventAuxiliary().event(), (int)digit.Channel()});
             for(size_t i=0; i<waveform_nsamples; ++i){
-                int sample=i<digit.NADC() ? digit.ADCs()[i] : digit.ADCs().back();
+                int sample=uncompressed[ std::min(i, uncompressed.size()-1) ];
                 samples.back().push_back(sample);
             }
         } // end loop over digits (=?channels)
