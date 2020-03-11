@@ -89,55 +89,55 @@ extract_larsoft_hits(std::string const& tag,
                      int nevents, int nskip,
                      int triggerType)
 {
-  InputTag daq_tag{ tag };
-  // Create a vector of length 1, containing the given filename.
-  vector<string> filenames(1, filename);
+    InputTag daq_tag{ tag };
+    // Create a vector of length 1, containing the given filename.
+    vector<string> filenames(1, filename);
 
-  int iev=0;
-  for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
-    vector<vector<int> > samples;
+    int iev=0;
+    for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
+        vector<vector<int> > samples;
 
-    if(iev<nskip) continue;
-    if(iev>=nevents+nskip) break;
-    if(triggerType!=-1){
-        auto& timestamp=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timingrawdecoder:daq:DecoderandReco"});
-        assert(timestamp.size()==1);
-        if(timestamp[0].GetFlags()!=triggerType){
-            std::cout << "Skipping event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
-            continue;
+        if(iev<nskip) continue;
+        if(iev>=nevents+nskip) break;
+        if(triggerType!=-1){
+            auto& timestamp=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timingrawdecoder:daq:DecoderandReco"});
+            assert(timestamp.size()==1);
+            if(timestamp[0].GetFlags()!=triggerType){
+                std::cout << "Skipping event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+                continue;
+            }
+            else{
+                std::cout << "Using event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+            }
         }
-        else{
-            std::cout << "Using event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+        std::cout << "Event " << ev.eventAuxiliary().id() << std::endl;
+
+        //------------------------------------------------------------------
+        // Look at the hits
+        auto& hits =
+            *ev.getValidHandle<vector<recob::Hit>>(daq_tag);
+        if(hits.empty()){
+            std::cout << "Hits vector is empty" << std::endl;
         }
-    }
-    std::cout << "Event " << ev.eventAuxiliary().id() << std::endl;
+        for(auto&& hit: hits){
+            samples.push_back({
+                    (int)hit.Channel(), hit.StartTick(), hit.EndTick(), (int)hit.SummedADC(), (int)hit.RMS()
+                        });
+        } // end loop over digits (=?channels)
+        std::string this_outfile(outfile);
+        size_t dotpos=outfile.find_last_of(".");
+        if(dotpos==std::string::npos){
+            dotpos=outfile.length();
+        }
+        std::ostringstream iss;
+        auto& rdtimestamps=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timing:daq:RunRawDecoder"});
+        assert(rdtimestamps.size()==1);
 
-    //------------------------------------------------------------------
-    // Look at the hits
-    auto& hits =
-        *ev.getValidHandle<vector<recob::Hit>>(daq_tag);
-    if(hits.empty()){
-        std::cout << "Hits vector is empty" << std::endl;
-    }
-    for(auto&& hit: hits){
-        samples.push_back({
-                (int)hit.Channel(), hit.StartTick(), hit.EndTick(), (int)hit.SummedADC(), (int)hit.RMS()
-            });
-    } // end loop over digits (=?channels)
-    std::string this_outfile(outfile);
-    size_t dotpos=outfile.find_last_of(".");
-    if(dotpos==std::string::npos){
-      dotpos=outfile.length();
-    }
-    std::ostringstream iss;
-    auto& rdtimestamps=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timing:daq:RunRawDecoder"});
-    assert(rdtimestamps.size()==1);
-
-    iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << "_t0x" << std::hex << rdtimestamps[0].GetTimeStamp() << outfile.substr(dotpos, outfile.length()-dotpos);
-    std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
-    save_to_file<int>(iss.str(), samples, format, false);
-    ++iev;
-  } // end loop over events
+        iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << "_t0x" << std::hex << rdtimestamps[0].GetTimeStamp() << outfile.substr(dotpos, outfile.length()-dotpos);
+        std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
+        save_to_file<int>(iss.str(), samples, format, false);
+        ++iev;
+    } // end loop over events
 }
 
 int main(int argc, char** argv)
@@ -184,3 +184,8 @@ int main(int argc, char** argv)
                          vm["trig"].as<int>());
     return 0;
 }
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:

@@ -89,107 +89,107 @@ extract_larsoft_waveforms(std::string const& tag,
                           int triggerType,
                           bool timestampInFilename)
 {
-  InputTag daq_tag{ tag };
-  // Create a vector of length 1, containing the given filename.
-  vector<string> filenames(1, filename);
+    InputTag daq_tag{ tag };
+    // Create a vector of length 1, containing the given filename.
+    vector<string> filenames(1, filename);
 
-  int iev=0;
-  for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
-    vector<vector<int> > samples;
-    vector<vector<float> > trueIDEs;
+    int iev=0;
+    for (gallery::Event ev(filenames); !ev.atEnd(); ev.next()) {
+        vector<vector<int> > samples;
+        vector<vector<float> > trueIDEs;
 
-    std::set<int> channelsWithSignal;
-    if(iev<nskip) continue;
-    if(iev>=nevents+nskip) break;
-    if(triggerType!=-1){
-        auto& timestamp=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timingrawdecoder:daq:DecoderandReco"});
-        assert(timestamp.size()==1);
-        if(timestamp[0].GetFlags()!=triggerType){
-            std::cout << "Skipping event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
-            continue;
+        std::set<int> channelsWithSignal;
+        if(iev<nskip) continue;
+        if(iev>=nevents+nskip) break;
+        if(triggerType!=-1){
+            auto& timestamp=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timingrawdecoder:daq:DecoderandReco"});
+            assert(timestamp.size()==1);
+            if(timestamp[0].GetFlags()!=triggerType){
+                std::cout << "Skipping event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+                continue;
+            }
+            else{
+                std::cout << "Using event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
+            }
         }
-        else{
-            std::cout << "Using event " << ev.eventAuxiliary().event()  << " with trigger type " << timestamp[0].GetFlags() << std::endl;
-        }
-    }
-    std::cout << "Event " << ev.eventAuxiliary().id() << std::endl;
-    if(truth_outfile!=""){
-        //------------------------------------------------------------------
-        // Get the SimChannels so we can see where the actual energy depositions were
-        auto& simchs=*ev.getValidHandle<std::vector<sim::SimChannel>>(InputTag{"largeant"});
+        std::cout << "Event " << ev.eventAuxiliary().id() << std::endl;
+        if(truth_outfile!=""){
+            //------------------------------------------------------------------
+            // Get the SimChannels so we can see where the actual energy depositions were
+            auto& simchs=*ev.getValidHandle<std::vector<sim::SimChannel>>(InputTag{"largeant"});
         
-        for(auto&& simch: simchs){
-            channelsWithSignal.insert(simch.Channel());
-            if(truth_outfile!=""){
-                double charge=0;
-                for (const auto& TDCinfo: simch.TDCIDEMap()) {
-                    for (const sim::IDE& ide: TDCinfo.second) {
-                        charge += ide.numElectrons;
-                    } // for IDEs
-                    auto const tdc = TDCinfo.first;
-                    trueIDEs.push_back(std::vector<float>{(float)iev, (float)simch.Channel(), (float)tdc, (float)charge});
-                } // for TDCs
-            } // if fout_truth
-        } // loop over SimChannels
-    }
+            for(auto&& simch: simchs){
+                channelsWithSignal.insert(simch.Channel());
+                if(truth_outfile!=""){
+                    double charge=0;
+                    for (const auto& TDCinfo: simch.TDCIDEMap()) {
+                        for (const sim::IDE& ide: TDCinfo.second) {
+                            charge += ide.numElectrons;
+                        } // for IDEs
+                        auto const tdc = TDCinfo.first;
+                        trueIDEs.push_back(std::vector<float>{(float)iev, (float)simch.Channel(), (float)tdc, (float)charge});
+                    } // for TDCs
+                } // if fout_truth
+            } // loop over SimChannels
+        }
 
-    int waveform_nsamples=-1;
-    int n_truncated=0;
-    //------------------------------------------------------------------
-    // Look at the digits (ie, TPC waveforms)
-    auto& digits =
-      *ev.getValidHandle<vector<raw::RawDigit>>(daq_tag);
-    if(digits.empty()){
-        std::cout << "Digits vector is empty" << std::endl;
-    }
-    for(auto&& digit: digits){
-      if(digit.Compression()!=0){
-        std::cout << "Compression type " << digit.Compression() << std::endl;
-        exit(1);
-      }
-      if(onlySignal && channelsWithSignal.find(digit.Channel())==channelsWithSignal.end()){
-        continue;
-      }
-      // Check that the waveform has the same number of samples as all the previous waveforms
-      if(waveform_nsamples<0){ waveform_nsamples=digit.NADC(); }
-      else{
-          if(digit.NADC()!=waveform_nsamples){
-              if(n_truncated<10){
-                  std::cerr << "Channel " << digit.Channel() << " (offline APA " << (digit.Channel()/2560) << ") has " << digit.NADC() << " samples but all previous channels had " << waveform_nsamples << " samples" << std::endl;
-              }
-              if(n_truncated==100){
-                  std::cerr << "(More errors suppressed)" << std::endl;
-              }
-              ++n_truncated;
-          }
-      }
-      samples.push_back({(int)ev.eventAuxiliary().event(), (int)digit.Channel()});
-      for(size_t i=0; i<waveform_nsamples; ++i){
-          int sample=i<digit.NADC() ? digit.ADCs()[i] : digit.ADCs().back();
-          samples.back().push_back(sample);
-      }
-    } // end loop over digits (=?channels)
-    if(n_truncated!=0){
-        std::cerr << "Truncated " << n_truncated << " channels with the wrong number of samples" << std::endl;
-    }
-    std::string this_outfile(outfile);
-    size_t dotpos=outfile.find_last_of(".");
-    if(dotpos==std::string::npos){
-      dotpos=outfile.length();
-    }
-    std::ostringstream iss, timestampStr;
-    if(timestampInFilename){
-      auto& rdtimestamps=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timing:daq:RunRawDecoder"});
-      assert(rdtimestamps.size()==1);
-      // std::cout << "eventAuxiliary value is " << ev.eventAuxiliary().time().value() << std::endl;
-      timestampStr << "_t0x" << std::hex << rdtimestamps[0].GetTimeStamp();
-    }
-    iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << timestampStr.str() <<  outfile.substr(dotpos, outfile.length()-dotpos);
-    std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
-    save_to_file<int>(iss.str(), samples, format, false);
-    if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, format, iev!=0);
-    ++iev;
-  } // end loop over events
+        int waveform_nsamples=-1;
+        int n_truncated=0;
+        //------------------------------------------------------------------
+        // Look at the digits (ie, TPC waveforms)
+        auto& digits =
+            *ev.getValidHandle<vector<raw::RawDigit>>(daq_tag);
+        if(digits.empty()){
+            std::cout << "Digits vector is empty" << std::endl;
+        }
+        for(auto&& digit: digits){
+            if(digit.Compression()!=0){
+                std::cout << "Compression type " << digit.Compression() << std::endl;
+                exit(1);
+            }
+            if(onlySignal && channelsWithSignal.find(digit.Channel())==channelsWithSignal.end()){
+                continue;
+            }
+            // Check that the waveform has the same number of samples as all the previous waveforms
+            if(waveform_nsamples<0){ waveform_nsamples=digit.NADC(); }
+            else{
+                if(digit.NADC()!=waveform_nsamples){
+                    if(n_truncated<10){
+                        std::cerr << "Channel " << digit.Channel() << " (offline APA " << (digit.Channel()/2560) << ") has " << digit.NADC() << " samples but all previous channels had " << waveform_nsamples << " samples" << std::endl;
+                    }
+                    if(n_truncated==100){
+                        std::cerr << "(More errors suppressed)" << std::endl;
+                    }
+                    ++n_truncated;
+                }
+            }
+            samples.push_back({(int)ev.eventAuxiliary().event(), (int)digit.Channel()});
+            for(size_t i=0; i<waveform_nsamples; ++i){
+                int sample=i<digit.NADC() ? digit.ADCs()[i] : digit.ADCs().back();
+                samples.back().push_back(sample);
+            }
+        } // end loop over digits (=?channels)
+        if(n_truncated!=0){
+            std::cerr << "Truncated " << n_truncated << " channels with the wrong number of samples" << std::endl;
+        }
+        std::string this_outfile(outfile);
+        size_t dotpos=outfile.find_last_of(".");
+        if(dotpos==std::string::npos){
+            dotpos=outfile.length();
+        }
+        std::ostringstream iss, timestampStr;
+        if(timestampInFilename){
+            auto& rdtimestamps=*ev.getValidHandle<std::vector<raw::RDTimeStamp>>(InputTag{"timing:daq:RunRawDecoder"});
+            assert(rdtimestamps.size()==1);
+            // std::cout << "eventAuxiliary value is " << ev.eventAuxiliary().time().value() << std::endl;
+            timestampStr << "_t0x" << std::hex << rdtimestamps[0].GetTimeStamp();
+        }
+        iss << outfile.substr(0, dotpos) << "_evt" << ev.eventAuxiliary().event() << timestampStr.str() <<  outfile.substr(dotpos, outfile.length()-dotpos);
+        std::cout << "Writing event " << ev.eventAuxiliary().event() << " to file " << iss.str() << std::endl;
+        save_to_file<int>(iss.str(), samples, format, false);
+        if(truth_outfile!="") save_to_file<float>(truth_outfile, trueIDEs, format, iev!=0);
+        ++iev;
+    } // end loop over events
 }
 
 int main(int argc, char** argv)
@@ -242,3 +242,7 @@ int main(int argc, char** argv)
                               vm.count("ts"));
     return 0;
 }
+
+// Local Variables:
+// c-basic-offset: 4
+// End:
