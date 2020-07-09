@@ -34,7 +34,7 @@ def get_apa(all_chans, apanum, planetype="z", wallorcryo="both"):
     elif wallorcryo=="cryo":
         first_chan=2560*apanum+starts[planetype]+cryo_start
         last_chan=2560*apanum+starts[planetype]+cryo_end
-
+    print "Looking for %d,%d" % (first_chan, last_chan)
     apachanbool=np.logical_and((chans>=first_chan),
                                (chans<last_chan))
     apaindices=np.argwhere(apachanbool)

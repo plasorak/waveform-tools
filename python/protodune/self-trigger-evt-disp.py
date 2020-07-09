@@ -16,7 +16,7 @@ def plot_with_hits(ax, s, hits=None, minmax=100, use_channel_number=True):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", default="/data/lar/dunedaq/rodrigues/protodune-noise/np04_signal_run004643_0001_dl1_evt0.npy")
+    parser.add_argument("--filename", required=True)
     parser.add_argument("--cmax", default=20, type=float)
     parser.add_argument("--tmin", default=None, type=float)
     parser.add_argument("--apas", default=None)
@@ -25,13 +25,20 @@ if __name__=="__main__":
     parser.add_argument("--show-hits", action="store_true")
     parser.add_argument("--batch", action="store_true")
     parser.add_argument("--save-name", default=None)
+    parser.add_argument("--format", default="offline", choices=["online", "offline"])
     
     parser.add_argument("--collection-only", action="store_true")
     parser.add_argument("--zoom", nargs=4, default=[], metavar=("xmin", "ymin", "width", "height"))
     parser.add_argument("--figsize", nargs=2, default=[6.4, 4.8], metavar=("width", "height"))
     args=parser.parse_args()
-    a=np.load(args.filename)
+    a=np.load(args.filename) if args.filename.endswith("npy") else np.loadtxt(args.filename).astype(int)
+    if args.format=="online":
+        tmp=a.T[1:]
+        z=np.zeros((tmp.shape[0],1), dtype=int)
+        a=np.hstack((z,tmp))
+
     chans=a[:,1]
+    print chans
 
     if args.apas:
         apas=[int(x) for x in args.apas.split(",")]
@@ -44,7 +51,7 @@ if __name__=="__main__":
             views.setdefault(apa, {})[view]=wutil.pedsub(wutil.get_apa(a,
                                                                        apa,
                                                                        view,
-                                                                       wallorcryo="cryo" if view=="z" else "both"))
+                                                                       wallorcryo="both" if view=="z" else "both"))
             
 
     # Parse the filename for run, evt, timestamp
