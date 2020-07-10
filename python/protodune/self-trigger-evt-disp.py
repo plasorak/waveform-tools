@@ -16,25 +16,40 @@ def plot_with_hits(ax, s, hits=None, minmax=100, use_channel_number=True):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", required=True)
-    parser.add_argument("--cmax", default=20, type=float)
-    parser.add_argument("--tmin", default=None, type=float)
-    parser.add_argument("--apas", default=None)
-    parser.add_argument("--tmax", default=None, type=float)
-    parser.add_argument("--use-channel-number", action="store_true")
-    parser.add_argument("--show-hits", action="store_true")
-    parser.add_argument("--batch", action="store_true")
-    parser.add_argument("--save-name", default=None)
+    parser.add_argument("--filename", required=True, help="Input file name")
+    parser.add_argument("--apas", default=None,
+                        help="Comma-separated list of APAs to show")
+    parser.add_argument("--cmax", default=20, type=float,
+                        help="Maximum value for the colour scale")
+    parser.add_argument("--tmin", default=None, type=float,
+                        help="Minimum value of time to show, in ticks since first time in file")
+    parser.add_argument("--tmax", default=None, type=float,
+                        help="Maximum value of time to show, in ticks since first time in file")
+    parser.add_argument("--show-hits", action="store_true",
+                        help='Show hits from a file with the same name as --filename, but with "waveform" replaced by "hits"' )
+    parser.add_argument("--batch", action="store_true",
+                        help="Don't display anything on screen (useful if saving many event displays to file")
+    parser.add_argument("--save-name", default=None,
+                        help="Name of image file to save event display to")
     parser.add_argument("--format", default="offline", choices=["online", "offline"])
     
-    parser.add_argument("--collection-only", action="store_true")
-    parser.add_argument("--zoom", nargs=4, default=[], metavar=("xmin", "ymin", "width", "height"))
-    parser.add_argument("--figsize", nargs=2, default=[6.4, 4.8], metavar=("width", "height"))
+    parser.add_argument("--collection-only", action="store_true",
+                        help="Only show collection view")
+    parser.add_argument("--figsize", nargs=2, default=[6.4, 4.8], metavar=("width", "height"),
+                        help="Set width and height of figure, if saved")
     args=parser.parse_args()
-    a=np.load(args.filename) if args.filename.endswith("npy") else np.loadtxt(args.filename).astype(int)
+    a=np.load(args.filename) if args.filename.endswith("npy") else np.loadtxt(args.filename).astype(np.int32)
+
+    # "Offline" format has a channel per row, with the first column
+    # being the event number, and the second column being the channel
+    # number. "Online" format has a channel per column. The first row
+    # contains the channel numbers. The rest of the code assumes
+    # "offline" format, so we just munge online arrays to look like
+    # offline arrays right at the start: transpose, remove the
+    # timestamp column, and add a fake "event number" column
     if args.format=="online":
         tmp=a.T[1:]
-        z=np.zeros((tmp.shape[0],1), dtype=int)
+        z=np.zeros((tmp.shape[0],1), dtype=np.int32)
         a=np.hstack((z,tmp))
 
     chans=a[:,1]
