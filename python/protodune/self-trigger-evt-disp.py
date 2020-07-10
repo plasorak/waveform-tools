@@ -38,7 +38,6 @@ if __name__=="__main__":
         a=np.hstack((z,tmp))
 
     chans=a[:,1]
-    print chans
 
     if args.apas:
         apas=[int(x) for x in args.apas.split(",")]
