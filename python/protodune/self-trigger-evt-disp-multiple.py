@@ -16,7 +16,7 @@ def plot_with_hits(ax, s, hits=None, minmax=100, use_channel_number=True):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filenames", required=True, help="Input file name")
+    parser.add_argument("--filenames", required=True, help="Input file name list, comma separated")
     parser.add_argument("--apas", default=None,
                         help="Comma-separated list of APAs to show")
     parser.add_argument("--cmax", default=20, type=float,
