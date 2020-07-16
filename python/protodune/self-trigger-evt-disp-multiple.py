@@ -37,14 +37,63 @@ if __name__=="__main__":
                         help="Only show collection view")
     parser.add_argument("--figsize", nargs=2, default=[6.4, 4.8], metavar=("width", "height"),
                         help="Set width and height of figure, if saved")
-    args=parser.parse_args()
-    files=[]
-    for f in args.filenames.split(","):
-        if f.endswith("npy"):
-            files.append(np.load(f))
-        else:
-            files.append(np.loadtxt(f).astype(np.int32))
 
+    
+    args=parser.parse_args()
+
+    files=[]
+    
+    if args.format=="online":
+        time_start=[]
+        time_end=[]
+        lines_start=[]
+        skiprows=[]
+    
+        for f in args.filenames.split(","):
+            with open(f) as this_file:
+                count=0
+                time={}
+                for x in this_file:
+                    if count>0:
+                        num_st = x.split(None, 1)[0]
+                        num_64 = int(num_st, 0)
+                        time[num_64] = count
+                    count+=1
+                    # if count>100:
+                    #     break
+                    
+                time_start.append(min(time.keys()))
+                time_end  .append(max(time.keys()))
+                lines_start.append(time)
+                
+        time_start = max(time_start)
+        time_end = min(time_end)
+        print("Time start is for all the files is:", hex(time_start))
+        print("Time end is for all the files is:", hex(time_end))
+        
+        for i,f in enumerate(args.filenames.split(",")):
+            array = np.loadtxt(f).astype(np.int32)
+            
+            start_at = lines_start[i][time_start]
+            end_at = lines_start[i][time_end]
+            
+            if (end_at+1<array.shape[0]):
+                print("ignoring lines", end_at,"to", array.shape[0],"for file",f,"for time sync")
+                array = np.delete(array, range(end_at+1,array.shape[0]), 0)
+                                  
+            if (start_at>1):
+                print("ignoring lines 1 to", start_at,"for file",f,"for time sync")
+                array = np.delete(array, range(1,start_at),0)
+
+            files.append(array)
+            
+    else:
+        for f in args.filenames.split(","):
+            if f.endswith("npy"):
+                files.append(np.load(f))
+            else:
+                files.append(np.loadtxt(f).astype(np.int32))
+    
     # "Offline" format has a channel per row, with the first column
     # being the event number, and the second column being the channel
     # number. "Online" format has a channel per column. The first row
@@ -59,18 +108,14 @@ if __name__=="__main__":
             tmp=f.T[1:]
             z=np.zeros((tmp.shape[0],1), dtype=np.int32)
             a1=np.hstack((z,tmp))
+
             chans=np.append(chans,a1[:,1])
             
-            print(a1.shape)
             if i==0:
                 a = a1
             else:
-                print(a.shape)
                 a=np.concatenate((a,a1))
-            print(a.shape)
             
-    print(chans.shape)
-    print(a.shape)
     
     if args.apas:
         apas=[int(x) for x in args.apas.split(",")]
